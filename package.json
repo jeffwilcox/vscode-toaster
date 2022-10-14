@@ -1,6 +1,6 @@
 {
-  "name": "toaster",
-  "displayName": "toaster",
+  "name": "vscode-toaster",
+  "displayName": "Toaster",
   "description": "To improve Codespaces user experiences, Toaster is a simple extension to integrate devcontainers, scripts, background processes, and the Codespace user interface.",
   "version": "0.0.1",
   "engines": {
