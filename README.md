@@ -29,6 +29,7 @@ If the file is valid JSON, it can have these properties that are specific to our
 - urlDisplayName: optional choice display to use for the 2nd url option, otherwise, includes the URL to navigate to
 - okClipboard: text to copy
 - urlClipboard: text to copy
+- burnAfterReading: set to `true` to not store the toast information in the `.toasted` file
 
 _Sorry, as a quick POC extension there is no version schema and the object design is poor._
 
@@ -69,6 +70,11 @@ After choosing the option, this is what was written to the file `~/.toasts/sampl
 ```
 
 ## Release Notes
+
+### 1.0.3
+
+- Adds `burnAfterReading` value that will redact the information in the toast written to the `toasted` file
+- Device flow projection sets burn after reading automatically so there are no dangling codes
 
 ### 1.0.2
 

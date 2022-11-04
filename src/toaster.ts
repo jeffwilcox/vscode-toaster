@@ -26,7 +26,7 @@ type DeviceFlowFormat = {
 };
 
 type Toasted = {
-  toast: IToast;
+  toast: IToast | string;
   toastedTime: string;
   toastedChoiceTime: string;
   toastedChoice: string;
@@ -51,6 +51,8 @@ interface IToast {
   url?: string;
   urlDisplayName?: string;
   urlClipboard?: string;
+
+  burnAfterReading?: boolean;
 }
 
 export class Toaster {
@@ -188,7 +190,7 @@ export class Toaster {
             filename: toast.filename,
             contents: {
               type: ToastType.information,
-              message: raw,
+              message: raw.trim(),
             },
           });
         } else {
@@ -215,7 +217,7 @@ export class Toaster {
         const basename = path.basename(filename, extension);
         const toastedPath = path.join(this._toastsPath, `${basename}.toasted`);
         const toasted: Toasted = {
-          toast,
+          toast: toast.burnAfterReading ? '[redacted]' : toast,
           toastedChoiceTime: (new Date()).toISOString(),
           toastedTime: toastWritten.toISOString(),
           toastedChoice: choice,
@@ -301,6 +303,7 @@ function projectDeviceFlowToToast(deviceFlow: DeviceFlowFormat) {
     okClipboard: deviceFlow.UserCode,
     okUrl: deviceFlow.VerificationUrl,
     ok: 'Verify',
+    burnAfterReading: true,
   };
   console.dir(toast);
   return toast;
