@@ -13,7 +13,13 @@ last minute.
 The file is deleted after being shown and a `*.toasted` file is written with the outcome
 in case your scrip is waiting to react to acknowledgement or navigation.
 
-If the file is valid JSON, it can have additional properties:
+### Basic text file
+
+A text file will have its contents shown as the message with a simple OK button by default.
+
+### JSON file
+
+If the file is valid JSON, it can have these properties that are specific to our toast format:
 
 - type: `information`, `warning`, `error`
 - message: text to display
@@ -21,8 +27,24 @@ If the file is valid JSON, it can have additional properties:
 - okUrl: optional URL to navigate to, being a mailto link, https link, or vscode link
 - url: optional 2nd choice that is a web url to navigate to
 - urlDisplayName: optional choice display to use for the 2nd url option, otherwise, includes the URL to navigate to
+- okClipboard: text to copy
+- urlClipboard: text to copy
+
+_Sorry, as a quick POC extension there is no version schema and the object design is poor._
+
+### Device Flow projection
+
+If the file is valid JSON and matches the type DeviceFlowFormat defined in this code,
+namely, having a `Message`, `UserCode`, and `VerificationUrl`, it will be translated
+to make it quick and easy to authenticate the device flow. The user code will be
+copied to the clipboard and the browser will navigate to the verification URL.
 
 ## Release Notes
+
+### 1.0.2
+
+- Adds support for properties `okClipboard` and `urlClipboard`, that will store a text value in the clipboard if that choice is selected
+- Adds native support for a device flow JSON type to have clipboard, verification URL, and message translated into our projection format
 
 ### 1.0.1
 

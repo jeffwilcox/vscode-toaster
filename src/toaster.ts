@@ -5,11 +5,24 @@ import * as path from 'path';
 import * as os from 'os';
 
 const deleteInsteadOfToastingToasts = false;
+const supportDeviceFlowProjections = true;
 
 type Toast = {
   date: Date;
   filename: string;
   contents: IToast;
+};
+
+// @eslint-ignore
+type DeviceFlowFormat = {
+  UserCode: string;
+  DeviceCode: string;
+  VerificationUrl: string;
+  ExpiresOn: string;
+  Interval: number;
+  Message: string;
+  ClientId: string;
+  Scopes: string[];
 };
 
 type Toasted = {
@@ -18,6 +31,7 @@ type Toasted = {
   toastedChoiceTime: string;
   toastedChoice: string;
   toastedNavigation?: string;
+  clipboardOutcome?: boolean;
 };
 
 enum ToastType {
@@ -32,9 +46,11 @@ interface IToast {
 
   ok?: string;
   okUrl?: string;
+  okClipboard?: string;
 
   url?: string;
   urlDisplayName?: string;
+  urlClipboard?: string;
 }
 
 export class Toaster {
@@ -47,17 +63,15 @@ export class Toaster {
 
   async fire() {
     const toasts = await this._getReadyToasts();
-    if (toasts.length === 0) {
-      return;
-    }
-
-    console.log(`Currently there are ${toasts.length} toasts ready to burn.`);
-
-    const toast = toasts[0];
-    try {
-      await this.burnToast(toast);
-    } catch (error) {
-      console.error(error);
+    if (toasts.length) {
+      console.log(`Currently there are ${toasts.length} toasts ready to action.`);
+      for (const toast of toasts) {
+        this.burnToast(toast).then(ok => {
+          console.log(`OK, toast ${toast.filename} from ${toast.date} completed.`);
+        }).catch(err => {
+          console.log(`Error while processing toast ${toast.filename} from ${toast.date}. Error: ${err}`);
+        });
+      }
     }
   }
 
@@ -65,34 +79,69 @@ export class Toaster {
     console.dir(toast);
     this._burntToast.set(toast.filename, toast.date);
     const { contents } = toast;
-    await new Promise((resolve, reject) => {
-      const okOption = contents?.ok || 'OK';
-      const options = [okOption];
-      let webOpenOption: string | null = null;
-      if (contents?.url) {
-        webOpenOption = contents?.urlDisplayName || 'Open ' + contents.url;
-        options.push(webOpenOption);
+    const okOption = contents?.ok || 'OK';
+    const options = [okOption];
+    let webOpenOption: string | null = null;
+    if (contents?.url) {
+      webOpenOption = contents?.urlDisplayName || contents.url;
+      options.push(webOpenOption);
+    }
+    const showToast = this.typeToCall(contents.type);
+    const toastWritten = new Date();
+    const errors = [];
+    let value: string | undefined;
+    let navigation = '';
+    let navOutcome: boolean;
+    let copyToClipboard = '';
+    try {
+      value = await showToast(contents.message, ...options);
+      console.log(`The user chose: ${value}`);
+      if (value === webOpenOption && contents.url) {
+        navigation = contents.url;
+      } else if (value === okOption && contents?.okUrl) {
+        navigation = contents.okUrl;
       }
-      const showToast = this.typeToCall(contents.type);
-      const toastWritten = new Date();
-      showToast(contents.message, ...options).then((value) => {
-        console.log(value);
-        let navigation;
-        if (value === webOpenOption && contents.url) {
-          navigation = contents.url;
-        } else if (value === okOption && contents?.okUrl) {
-          navigation = contents.okUrl;
+      if (value === webOpenOption && contents.urlClipboard) {
+        copyToClipboard = contents.urlClipboard;
+      } else if (value === okOption && contents?.okClipboard) {
+        copyToClipboard = contents.okClipboard;
+      }
+      // POC clipboard support
+      if (copyToClipboard) {
+        console.log(`Copying to the clipboard: ${copyToClipboard}`);
+        try {
+          await vscode.env.clipboard.writeText(copyToClipboard as string);
+          console.log('The clipboard was written to.');
+        } catch (error) {
+          errors.push(error);
         }
-        if (navigation) {
-          console.log(`Opening URL: ${navigation}`);
-          vscode.env.openExternal(vscode.Uri.parse(navigation));
+      }
+      // Navigation
+      if (navigation) {
+        console.log(`Opening URL: ${navigation}`);
+        try {
+          navOutcome = await vscode.env.openExternal(vscode.Uri.parse(navigation));
+          console.log(`Navigation outcome: ${navOutcome} going to ${navigation}`);
+        } catch (error) {
+          errors.push(error);
         }
-        this._markToastToasted(toast.filename, contents, value || '', toastWritten, navigation).then(ok => {}).catch(error => {
-          console.error(`Could not delete ${toast.filename}: ${error}`);
-        });    
-        return resolve(value);
-      }, reject);
-    });
+      }
+    } catch (error) {
+      errors.push(error);
+    } finally {
+      if (errors?.length) {
+        console.log('Errors:');
+        errors.map(err => console.warn(err));
+        console.log();
+      }
+      try {
+        // The toast has been toasted
+        await this._markToastToasted(toast.filename, contents, value || '', toastWritten, navigation);
+      } catch (innerToastError) {
+        console.log(`Inner error while toasting: ${innerToastError}`);
+        console.warn(innerToastError);
+      }
+    }
   }
 
   private typeToCall(type: ToastType) {
@@ -114,10 +163,13 @@ export class Toaster {
       try {
         const fp = path.join(this._toastsPath, toast.filename);
         raw = await fs.readFile(fp, 'utf8');
-        const contents = JSON.parse(raw);
-        // Only if valid toast
+        let contents = JSON.parse(raw);
+        if (supportDeviceFlowProjections && isDeviceFlowFormat(contents)) {
+          contents = projectDeviceFlowToToast(contents);
+        }
         if (!contents.message) {
-          throw new Error('Invalid toast: missing message');
+          // Fallback to a JSON display as the value instead
+          contents.message = JSON.stringify(contents, null, 2);
         }
         if (!contents.type) {
           contents.type = ToastType.information;
@@ -231,4 +283,25 @@ export class Toaster {
     const diff = now.getTime() - date.getTime();
     return diff < 60 * 1000;
   }
+}
+
+function isDeviceFlowFormat(contents: any) {
+  return (contents?.UserCode && contents?.VerificationUrl && contents?.Message);
+}
+
+function projectDeviceFlowToToast(deviceFlow: DeviceFlowFormat) {
+  console.log('Projecting device flow file:');
+  console.dir(deviceFlow);
+  console.log();
+  console.log('To toast:');
+
+  const toast: IToast = {
+    type: ToastType.information,
+    message: deviceFlow.Message,
+    okClipboard: deviceFlow.UserCode,
+    okUrl: deviceFlow.VerificationUrl,
+    ok: 'Verify',
+  };
+  console.dir(toast);
+  return toast;
 }
