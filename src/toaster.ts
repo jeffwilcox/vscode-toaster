@@ -4,10 +4,20 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+const deleteInsteadOfToastingToasts = false;
+
 type Toast = {
   date: Date;
   filename: string;
   contents: IToast;
+};
+
+type Toasted = {
+  toast: IToast;
+  toastedTime: string;
+  toastedChoiceTime: string;
+  toastedChoice: string;
+  toastedNavigation?: string;
 };
 
 enum ToastType {
@@ -21,6 +31,10 @@ interface IToast {
   message: string;
 
   ok?: string;
+  okUrl?: string;
+
+  url?: string;
+  urlDisplayName?: string;
 }
 
 export class Toaster {
@@ -52,15 +66,32 @@ export class Toaster {
     this._burntToast.set(toast.filename, toast.date);
     const { contents } = toast;
     await new Promise((resolve, reject) => {
-      let options = [contents?.ok || 'OK'];
-
+      const okOption = contents?.ok || 'OK';
+      const options = [okOption];
+      let webOpenOption: string | null = null;
+      if (contents?.url) {
+        webOpenOption = contents?.urlDisplayName || 'Open ' + contents.url;
+        options.push(webOpenOption);
+      }
       const showToast = this.typeToCall(contents.type);
+      const toastWritten = new Date();
       showToast(contents.message, ...options).then((value) => {
         console.log(value);
-      });
-    });
-    this._deleteToast(toast.filename).then(ok => {}).catch(error => {
-      console.error(`Could not delete ${toast.filename}: ${error}`);
+        let navigation;
+        if (value === webOpenOption && contents.url) {
+          navigation = contents.url;
+        } else if (value === okOption && contents?.okUrl) {
+          navigation = contents.okUrl;
+        }
+        if (navigation) {
+          console.log(`Opening URL: ${navigation}`);
+          vscode.env.openExternal(vscode.Uri.parse(navigation));
+        }
+        this._markToastToasted(toast.filename, contents, value || '', toastWritten, navigation).then(ok => {}).catch(error => {
+          console.error(`Could not delete ${toast.filename}: ${error}`);
+        });    
+        return resolve(value);
+      }, reject);
     });
   }
 
@@ -119,10 +150,31 @@ export class Toaster {
     return readyToasts;
   }
 
-  private async _deleteToast(filename: string) {
+  private async _markToastToasted(filename: string, toast: IToast, choice: string, toastWritten: Date, navigation: string | undefined) {
     try {
       const fp = path.join(this._toastsPath, filename);
-      await fs.unlink(fp);
+      console.log(`Toasted toast file ${fp}`);
+      if (deleteInsteadOfToastingToasts) {
+        console.log(`Unlinking file ${fp}`);
+        await fs.unlink(fp);
+      } else {
+        console.log(`Toasting file ${fp}`);
+        const extension = path.extname(filename);
+        const basename = path.basename(filename, extension);
+        const toastedPath = path.join(this._toastsPath, `${basename}.toasted`);
+        const toasted: Toasted = {
+          toast,
+          toastedChoiceTime: (new Date()).toISOString(),
+          toastedTime: toastWritten.toISOString(),
+          toastedChoice: choice,
+          toastedNavigation: navigation,
+        };
+        const toastedFileContent = JSON.stringify(toasted, null, 2);
+        await fs.writeFile(toastedPath, toastedFileContent, 'utf8');
+        console.log(`Wrote toasted file ${toastedPath}`);
+        await fs.unlink(fp);
+        console.log(`Unlinking file ${fp}`);
+      }
     } catch (error: any) {
       console.error(error);
     }
@@ -153,7 +205,7 @@ export class Toaster {
   private async _getToastFilenames(): Promise<string[]> {
     try {
       const toasts = await fs.readdir(this._toastsPath);
-      return toasts.filter(fp => !fp.includes('.swp'));
+      return toasts.filter(fp => !fp.includes('.swp') && !fp.endsWith('.toasted'));
     } catch (error: any) {
       if (error.code !== 'ENOENT') {
         console.error(error);
