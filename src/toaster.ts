@@ -160,6 +160,7 @@ export class Toaster {
   private async _getReadyToasts() {
     const toasts = (await this._getUntoastedFilenames()) as Toast[];
     const readyToasts: Toast[] = [];
+
     await Promise.allSettled(toasts.map(async toast => {
       let raw: string = '';
       try {
@@ -299,7 +300,7 @@ function projectDeviceFlowToToast(deviceFlow: DeviceFlowFormat) {
 
   const toast: IToast = {
     type: ToastType.information,
-    message: deviceFlow.Message,
+    message: deviceFlow.Message + `\n\nThe code ${deviceFlow.UserCode} has been copied to your clipboard.`,
     okClipboard: deviceFlow.UserCode,
     okUrl: deviceFlow.VerificationUrl,
     ok: 'Verify',

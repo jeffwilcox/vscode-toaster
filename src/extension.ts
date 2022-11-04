@@ -8,11 +8,30 @@ let toaster: Toaster | null = null;
 
 let isFiring = false;
 
+const showBasicDebugInfo = false;
+
 export function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "toaster" is now active!');
+
+	if (showBasicDebugInfo) {
+		const { env, workspace } = vscode;
+		console.dir({
+			machineId: env.machineId,
+			sessionId: env.sessionId,
+			language: env.language,
+			appName: env.appName,
+			appRoot: env.appRoot,
+			appHost: env.appHost,
+			uriScheme: env.uriScheme,
+			remoteName: env.remoteName,
+			uiKind: env.uiKind,
+			// asExternalUri: env.asExternalUri,
+			// workspaceInfo: workspace.getWorkspaceFolder()
+		});
+	}
 
 	toaster = new Toaster();
 

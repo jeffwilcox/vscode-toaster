@@ -71,6 +71,10 @@ After choosing the option, this is what was written to the file `~/.toasts/sampl
 
 ## Release Notes
 
+### 1.0.4
+
+- Device flow message clearly indicates that the clipboard has the code stored
+
 ### 1.0.3
 
 - Adds `burnAfterReading` value that will redact the information in the toast written to the `toasted` file
