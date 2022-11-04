@@ -22,6 +22,35 @@ If the file is valid JSON, it can have additional properties:
 - url: optional 2nd choice that is a web url to navigate to
 - urlDisplayName: optional choice display to use for the 2nd url option, otherwise, includes the URL to navigate to
 
+### Example toast with URL support
+
+In a new directory `~/.toasts/sample.json`:
+
+```
+{
+  "message": "What do you want to do today?",
+  "ok": "Visit Microsoft.com",
+  "okUrl": "https://microsoft.com"
+}
+```
+
+After choosing the option, this is what was written to the file `~/.toasts/sample.toasted`:
+
+```
+{
+  "toast": {
+    "message": "What do you want to do today?",
+    "ok": "Visit Microsoft.com",
+    "okUrl": "https://microsoft.com",
+    "type": "information"
+  },
+  "toastedChoiceTime": "2022-11-04T18:09:33.317Z",
+  "toastedTime": "2022-11-04T18:09:30.769Z",
+  "toastedChoice": "Visit Microsoft.com",
+  "toastedNavigation": "https://microsoft.com"
+}
+```
+
 ## Release Notes
 
 ### 1.0.1
