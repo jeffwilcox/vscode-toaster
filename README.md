@@ -39,6 +39,35 @@ namely, having a `Message`, `UserCode`, and `VerificationUrl`, it will be transl
 to make it quick and easy to authenticate the device flow. The user code will be
 copied to the clipboard and the browser will navigate to the verification URL.
 
+### Example toast with URL support
+
+In a new directory `~/.toasts/sample.json`:
+
+```
+{
+  "message": "What do you want to do today?",
+  "ok": "Visit Microsoft.com",
+  "okUrl": "https://microsoft.com"
+}
+```
+
+After choosing the option, this is what was written to the file `~/.toasts/sample.toasted`:
+
+```
+{
+  "toast": {
+    "message": "What do you want to do today?",
+    "ok": "Visit Microsoft.com",
+    "okUrl": "https://microsoft.com",
+    "type": "information"
+  },
+  "toastedChoiceTime": "2022-11-04T18:09:33.317Z",
+  "toastedTime": "2022-11-04T18:09:30.769Z",
+  "toastedChoice": "Visit Microsoft.com",
+  "toastedNavigation": "https://microsoft.com"
+}
+```
+
 ## Release Notes
 
 ### 1.0.2
