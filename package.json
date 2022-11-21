@@ -27,7 +27,7 @@
   "homepage": "https://github.com/jeffwilcox/vscode-toaster",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jeffwilcox/vsvscode-toaster.git"
+    "url": "https://github.com/jeffwilcox/vscode-toaster.git"
   },
   "bugs": {
     "url": "https://github.com/jeffwilcox/vscode-toaster/issues"
